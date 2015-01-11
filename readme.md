@@ -20,5 +20,5 @@ composer require league\flysystem-replicate-adapter
 ```php
 $source = new League\Flysystem\Adapter\AwsS3(...);
 $replica = new League\Flysystem\Adapter\Local(...);
-$adapter = new League\Flysystem\Adapter\ReplicateAdapter($source, $replica);
+$adapter = new League\Flysystem\Replicate\ReplicateAdapter($source, $replica);
 ```
