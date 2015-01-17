@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-composer require league\flysystem-replicate-adapter
+composer require league/flysystem-replicate-adapter
 ```
 
 ## Usage
