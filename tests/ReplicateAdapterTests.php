@@ -19,22 +19,22 @@ class ReplicateAdapterTests extends \PHPUnit_Framework_TestCase
     public function callProvider()
     {
         return [
-            'write' => ['write', true, 3],
-            'writeStream' => ['writeStream', true, 3],
-            'read' => ['read', false, 1],
-            'readStream' => ['readStream', false, 1],
+            'write'         => ['write', true, 3],
+            'writeStream'   => ['writeStream', true, 3],
+            'read'          => ['read', false, 1],
+            'readStream'    => ['readStream', false, 1],
             'getVisibility' => ['getVisibility', false, 1],
             'setVisibility' => ['setVisibility', true, 2],
-            'getSize' => ['getSize', false, 1],
-            'getMimetype' => ['getMimetype', false, 1],
-            'getMetadata' => ['getMetadata', false, 1],
-            'getTimestamp' => ['getTimestamp', false, 1],
-            'rename' => ['rename', true, 2],
-            'copy' => ['copy', true, 2],
-            'deleteDir' => ['deleteDir', true, 1],
-            'createDir' => ['createDir', true, 2],
-            'has' => ['has', false, 1],
-            'listContents' => ['listContents', false, 2],
+            'getSize'       => ['getSize', false, 1],
+            'getMimetype'   => ['getMimetype', false, 1],
+            'getMetadata'   => ['getMetadata', false, 1],
+            'getTimestamp'  => ['getTimestamp', false, 1],
+            'rename'        => ['rename', true, 2],
+            'copy'          => ['copy', true, 2],
+            'deleteDir'     => ['deleteDir', true, 1],
+            'createDir'     => ['createDir', true, 2],
+            'has'           => ['has', false, 1],
+            'listContents'  => ['listContents', false, 2],
         ];
     }
 
