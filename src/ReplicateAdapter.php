@@ -70,6 +70,8 @@ class ReplicateAdapter implements AdapterInterface
             return false;
         }
 
+        $resource = $this->ensureSeekable($resource, $path);
+
         return $this->replica->writeStream($path, $resource, $config);
     }
 
@@ -97,6 +99,8 @@ class ReplicateAdapter implements AdapterInterface
         if (! $this->source->updateStream($path, $resource, $config)) {
             return false;
         }
+
+        $resource = $this->ensureSeekable($resource, $path);
 
         if ($this->replica->has($path)) {
             return $this->replica->updateStream($path, $resource, $config);
@@ -251,5 +255,21 @@ class ReplicateAdapter implements AdapterInterface
         }
 
         return $this->replica->setVisibility($path, $visibility);
+    }
+
+    /**
+     * Return resource or binary stream that can using for `writeStream` and
+     * `updateStream`.
+     *
+     * @param mixed $resource
+     * @param string $path
+     * @return mixed
+     */
+    protected function ensureSeekable($resource, $path)
+    {
+        if (is_resource($resource) && fseek($resource, 0) !== 0) {
+            return $this->source->readStream($path);
+        }
+        return $resource;
     }
 }
