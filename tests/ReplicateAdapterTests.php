@@ -20,7 +20,6 @@ class ReplicateAdapterTests extends \PHPUnit_Framework_TestCase
     {
         return [
             'write'         => ['write', true, 3],
-            'writeStream'   => ['writeStream', true, 3],
             'read'          => ['read', false, 1],
             'readStream'    => ['readStream', false, 1],
             'getVisibility' => ['getVisibility', false, 1],
@@ -109,7 +108,7 @@ class ReplicateAdapterTests extends \PHPUnit_Framework_TestCase
         $this->replica->shouldReceive('has')->once()->andReturn(true);
         $this->replica->shouldReceive('updateStream')->once()->andReturn(true);
 
-        $this->assertTrue(call_user_func_array([$this->adapter, 'updateStream'], ['value', 'value', new Config()]));
+        $this->assertTrue($this->adapter->updateStream('value', fopen('data:text/plain,value', 'r+'), new Config()));
     }
 
     public function testMethodUpdateStreamSourceWillUpdateAndReplicaWillWrite()
@@ -118,7 +117,46 @@ class ReplicateAdapterTests extends \PHPUnit_Framework_TestCase
         $this->replica->shouldReceive('has')->once()->andReturn(false);
         $this->replica->shouldReceive('writeStream')->once()->andReturn(true);
 
-        $this->assertTrue(call_user_func_array([$this->adapter, 'updateStream'], ['value', 'value', new Config()]));
+        $this->assertTrue($this->adapter->updateStream('value', fopen('data:text/plain,value', 'r+'), new Config()));
+    }
+
+    public function testMethodUpdateStreamSourceWillWriteAndEnsureSeekableWillFail()
+    {
+        stream_wrapper_register('test', 'NonSeekableStream');
+
+        $this->source->shouldReceive('updateStream')->once()->andReturn(true);
+        $this->source->shouldReceive('readStream')->once()->andReturn(fopen('data:text/plain,value', 'r+'));
+
+        $this->assertFalse($this->adapter->updateStream('value', fopen('test://value', 'r+'), new Config()));
+
+        stream_wrapper_unregister('test');
+    }
+
+    public function testMethodWriteStreamSourceWillWriteAndReplicaWillWrite()
+    {
+        $this->source->shouldReceive('writeStream')->once()->andReturn(true);
+        $this->replica->shouldReceive('writeStream')->once()->andReturn(true);
+
+        $this->assertTrue($this->adapter->writeStream('value', fopen('data:text/plain,value', 'r+'), new Config()));
+    }
+
+    public function testMethodWriteStreamSourceWillNotWrite()
+    {
+        $this->source->shouldReceive('writeStream')->once()->andReturn(false);
+
+        $this->assertFalse($this->adapter->writeStream('value', fopen('data:text/plain,value', 'r+'), new Config()));
+    }
+
+    public function testMethodWriteStreamSourceWillWriteAndEnsureSeekableWillFail()
+    {
+        stream_wrapper_register('test', 'NonSeekableStream');
+
+        $this->source->shouldReceive('writeStream')->once()->andReturn(true);
+        $this->source->shouldReceive('readStream')->once()->andReturn(fopen('data:text/plain,value', 'r+'));
+
+        $this->assertFalse($this->adapter->writeStream('value', fopen('test://value', 'r+'), new Config()));
+
+        stream_wrapper_unregister('test');
     }
 
     public function testMethodDeleteSourceWillNotDelete()
@@ -143,5 +181,23 @@ class ReplicateAdapterTests extends \PHPUnit_Framework_TestCase
         $this->replica->shouldReceive('has')->once()->andReturn(false);
 
         $this->assertTrue(call_user_func_array([$this->adapter, 'delete'], ['value']));
+    }
+}
+
+class NonSeekableStream
+{
+    public function stream_open($uri, $mode, $options, &$opened_path)
+    {
+        return true;
+    }
+
+    public function stream_seek($offset, $whence = SEEK_SET)
+    {
+        return false;
+    }
+
+    public function stream_eof()
+    {
+        return false;
     }
 }

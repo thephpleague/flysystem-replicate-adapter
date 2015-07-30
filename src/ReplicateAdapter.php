@@ -4,6 +4,7 @@ namespace League\Flysystem\Replicate;
 
 use League\Flysystem\AdapterInterface;
 use League\Flysystem\Config;
+use League\Flysystem\Util;
 
 class ReplicateAdapter implements AdapterInterface
 {
@@ -70,7 +71,9 @@ class ReplicateAdapter implements AdapterInterface
             return false;
         }
 
-        $resource = $this->ensureSeekable($resource, $path);
+        if (! $resource = $this->ensureSeekable($resource, $path)) {
+            return false;
+        }
 
         return $this->replica->writeStream($path, $resource, $config);
     }
@@ -100,7 +103,9 @@ class ReplicateAdapter implements AdapterInterface
             return false;
         }
 
-        $resource = $this->ensureSeekable($resource, $path);
+        if (! $resource = $this->ensureSeekable($resource, $path)) {
+            return false;
+        }
 
         if ($this->replica->has($path)) {
             return $this->replica->updateStream($path, $resource, $config);
@@ -258,18 +263,21 @@ class ReplicateAdapter implements AdapterInterface
     }
 
     /**
-     * Return resource or binary stream that can using for `writeStream` and
-     * `updateStream`.
+     * Rewinds the stream, or returns the source stream if not seekable.
      *
-     * @param mixed $resource
-     * @param string $path
-     * @return mixed
+     * @param resource $resource The resource to rewind.
+     * @param string   $path     The path where the resource exists.
+     *
+     * @return resource A stream set to position zero.
      */
     protected function ensureSeekable($resource, $path)
     {
-        if (is_resource($resource) && fseek($resource, 0) !== 0) {
-            return $this->source->readStream($path);
+        if (Util::isSeekableStream($resource) && rewind($resource)) {
+            return $resource;
         }
-        return $resource;
+
+        $stream = $this->source->readStream($path);
+
+        return $stream ? $stream['stream'] : false;
     }
 }
