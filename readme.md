@@ -22,3 +22,13 @@ $source = new League\Flysystem\Adapter\AwsS3(...);
 $replica = new League\Flysystem\Adapter\Local(...);
 $adapter = new League\Flysystem\Replicate\ReplicateAdapter($source, $replica);
 ```
+
+What's cool about this is that you can chain them to replicate to more then 1 other storage system.
+
+
+```php
+$adapter = new League\Flysystem\Replicate\ReplicateAdapter($source, $replica);
+
+$anotherReplica = new League\Flysystem\Adapter\Dropbox(...);
+$adapter = new League\Flysystem\Replicate\ReplicateAdapter($adapter, $anotherReplica);
+```
