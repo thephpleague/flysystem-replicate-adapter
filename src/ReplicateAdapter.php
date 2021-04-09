@@ -2,29 +2,30 @@
 
 namespace League\Flysystem\Replicate;
 
-use League\Flysystem\AdapterInterface;
 use League\Flysystem\Config;
-use League\Flysystem\Util;
+use League\Flysystem\FileAttributes;
+use League\Flysystem\FilesystemAdapter;
+use League\Flysystem\FilesystemException;
 
-class ReplicateAdapter implements AdapterInterface
+class ReplicateAdapter implements FilesystemAdapter
 {
     /**
-     * @var AdapterInterface
+     * @var FilesystemAdapter
      */
     protected $replica;
 
     /**
-     * @var AdapterInterface
+     * @var FilesystemAdapter
      */
     protected $source;
 
     /**
      * Constructor.
      *
-     * @param AdapterInterface $source
-     * @param AdapterInterface $replica
+     * @param FilesystemAdapter $source
+     * @param FilesystemAdapter $replica
      */
-    public function __construct(AdapterInterface $source, AdapterInterface $replica)
+    public function __construct(FilesystemAdapter $source, FilesystemAdapter $replica)
     {
         $this->source = $source;
         $this->replica = $replica;
@@ -33,9 +34,9 @@ class ReplicateAdapter implements AdapterInterface
     /**
      * Returns the replica adapter.
      *
-     * @return AdapterInterface
+     * @return FilesystemAdapter
      */
-    public function getReplicaAdapter()
+    public function getReplicaAdapter(): FilesystemAdapter
     {
         return $this->replica;
     }
@@ -43,9 +44,9 @@ class ReplicateAdapter implements AdapterInterface
     /**
      * Returns the source adapter.
      *
-     * @return AdapterInterface
+     * @return FilesystemAdapter
      */
-    public function getSourceAdapter()
+    public function getSourceAdapter(): FilesystemAdapter
     {
         return $this->source;
     }
@@ -53,143 +54,82 @@ class ReplicateAdapter implements AdapterInterface
     /**
      * {@inheritdoc}
      */
-    public function write($path, $contents, Config $config)
+    public function write(string $path, string $contents, Config $config): void
     {
-        if (! $this->source->write($path, $contents, $config)) {
-            return false;
-        }
-
-        return $this->replica->write($path, $contents, $config);
+        $this->source->write($path, $contents, $config);
+        $this->replica->write($path, $contents, $config);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function writeStream($path, $resource, Config $config)
+    public function writeStream(string $path, $contents, Config $config): void
     {
-        if (! $this->source->writeStream($path, $resource, $config)) {
-            return false;
-        }
-
-        if (! $resource = $this->ensureSeekable($resource, $path)) {
-            return false;
-        }
-
-        return $this->replica->writeStream($path, $resource, $config);
+        $this->source->writeStream($path, $contents, $config);
+        $contents = $this->ensureSeekable($contents, $path);
+        $this->replica->writeStream($path, $contents, $config);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function update($path, $contents, Config $config)
+    public function move(string $source, string $destination, Config $config): void
     {
-        if (! $this->source->update($path, $contents, $config)) {
-            return false;
-        }
-
-        if ($this->replica->has($path)) {
-            return $this->replica->update($path, $contents, $config);
-        } else {
-            return $this->replica->write($path, $contents, $config);
-        }
+        $this->source->move($source, $destination, $config);
+        $this->replica->move($source, $destination, $config);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function updateStream($path, $resource, Config $config)
+    public function copy(string $source, string $destination, Config $config): void
     {
-        if (! $this->source->updateStream($path, $resource, $config)) {
-            return false;
-        }
+        $this->source->copy($source, $destination, $config);
+        $this->replica->copy($source, $destination, $config);
+    }
 
-        if (! $resource = $this->ensureSeekable($resource, $path)) {
-            return false;
-        }
+    /**
+     * {@inheritdoc}
+     */
+    public function delete(string $path): void
+    {
+        $this->source->delete($path);
 
-        if ($this->replica->has($path)) {
-            return $this->replica->updateStream($path, $resource, $config);
-        } else {
-            return $this->replica->writeStream($path, $resource, $config);
+        if ($this->replica->fileExists($path)) {
+            $this->replica->delete($path);
         }
     }
 
     /**
      * {@inheritdoc}
      */
-    public function rename($path, $newpath)
+    public function deleteDirectory(string $path): void
     {
-        if (! $this->source->rename($path, $newpath)) {
-            return false;
-        }
-
-        return $this->replica->rename($path, $newpath);
+        $this->source->deleteDirectory($path);
+        $this->replica->deleteDirectory($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function copy($path, $newpath)
+    public function createDirectory(string $path, Config $config): void
     {
-        if (! $this->source->copy($path, $newpath)) {
-            return false;
-        }
-
-        return $this->replica->copy($path, $newpath);
+        $this->source->createDirectory($path, $config);
+        $this->replica->createDirectory($path, $config);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function delete($path)
+    public function fileExists(string $path): bool
     {
-        if (! $this->source->delete($path)) {
-            return false;
-        }
-
-        if ($this->replica->has($path)) {
-            return $this->replica->delete($path);
-        }
-
-        return true;
+        return $this->source->fileExists($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function deleteDir($dirname)
-    {
-        if (! $this->source->deleteDir($dirname)) {
-            return false;
-        }
-
-        return $this->replica->deleteDir($dirname);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function createDir($dirname, Config $config)
-    {
-        if (! $this->source->createDir($dirname, $config)) {
-            return false;
-        }
-
-        return $this->replica->createDir($dirname, $config);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function has($path)
-    {
-        return $this->source->has($path);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function read($path)
+    public function read(string $path): string
     {
         return $this->source->read($path);
     }
@@ -197,7 +137,7 @@ class ReplicateAdapter implements AdapterInterface
     /**
      * {@inheritdoc}
      */
-    public function readStream($path)
+    public function readStream(string $path)
     {
         return $this->source->readStream($path);
     }
@@ -205,61 +145,50 @@ class ReplicateAdapter implements AdapterInterface
     /**
      * {@inheritdoc}
      */
-    public function listContents($directory = '', $recursive = false)
+    public function listContents(string $path, bool $deep): iterable
     {
-        return $this->source->listContents($directory, $recursive);
+        return $this->source->listContents($path, $deep);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getMetadata($path)
+    public function fileSize(string $path): FileAttributes
     {
-        return $this->source->getMetadata($path);
+        return $this->source->fileSize($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getSize($path)
+    public function mimeType(string $path): FileAttributes
     {
-        return $this->source->getSize($path);
+        return $this->source->mimeType($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getMimetype($path)
+    public function lastModified(string $path): FileAttributes
     {
-        return $this->source->getMimetype($path);
+        return $this->source->lastModified($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getTimestamp($path)
+    public function visibility(string $path): FileAttributes
     {
-        return $this->source->getTimestamp($path);
+        return $this->source->visibility($path);
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getVisibility($path)
+    public function setVisibility(string $path, string $visibility): void
     {
-        return $this->source->getVisibility($path);
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function setVisibility($path, $visibility)
-    {
-        if (! $this->source->setVisibility($path, $visibility)) {
-            return false;
-        }
-
-        return $this->replica->setVisibility($path, $visibility);
+        $this->source->setVisibility($path, $visibility);
+        $this->replica->setVisibility($path, $visibility);
     }
 
     /**
@@ -269,15 +198,14 @@ class ReplicateAdapter implements AdapterInterface
      * @param string   $path     The path where the resource exists.
      *
      * @return resource A stream set to position zero.
+     * @throws FilesystemException
      */
-    protected function ensureSeekable($resource, $path)
+    protected function ensureSeekable($resource, string $path)
     {
-        if (Util::isSeekableStream($resource) && rewind($resource)) {
+        if (stream_get_meta_data($resource)['seekable'] && rewind($resource)) {
             return $resource;
         }
 
-        $stream = $this->source->readStream($path);
-
-        return $stream ? $stream['stream'] : false;
+        return $this->source->readStream($path);
     }
 }
